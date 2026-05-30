@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Cubes</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Arial,sans-serif;background:#000;color:white;display:flex;justify-content:center;align-items:center;overflow:hidden;transition:background .4s ease}
+.screen{position:fixed;inset:0;display:flex;justify-content:center;align-items:center;text-align:center;z-index:20;background:radial-gradient(circle at top,#00ffff44,transparent 35%),radial-gradient(circle at bottom,#ff00ff44,transparent 40%),#000}
+.hidden{display:none!important}
+.card{width:min(92vw,500px);max-height:92vh;overflow:auto;padding:26px;border-radius:28px;background:#ffffff14;border:1px solid #ffffff44;box-shadow:0 0 25px #00ffff,0 0 55px #ff00ff88}
+.card h1{font-size:44px;margin:0 0 8px;text-shadow:0 0 12px #00ffff,0 0 25px #ff00ff}
+.setting,.shopItem,.leaderRow{margin:12px 0;text-align:left;background:#ffffff18;padding:12px;border-radius:14px;border:1px solid #ffffff22}
+select{width:100%;margin-top:8px;padding:10px;border:0;border-radius:10px;font-weight:bold}
+button{padding:12px 18px;border:0;border-radius:14px;font-weight:bold;cursor:pointer;color:#000;margin:4px;background:linear-gradient(90deg,#ff0055,#ffcc00,#00ff88,#00ccff,#9955ff);box-shadow:0 0 18px #00ffff}
+.big{font-size:22px;padding:15px 36px}
+#game{display:none;width:min(96vw,550px);text-align:center}
+h1{margin:8px 0;text-shadow:0 0 10px #00ffff,0 0 22px #ff00ff}
+.scorebar{display:flex;justify-content:space-around;gap:8px;margin:10px 0;flex-wrap:wrap}
+.box{background:#ffffff18;border:1px solid #ffffff44;border-radius:14px;padding:8px 10px;min-width:74px;box-shadow:0 0 12px #00ffff66}
+.meter{height:10px;width:100%;background:#222;border-radius:999px;overflow:hidden;margin:6px 0 2px;border:1px solid #ffffff22}
+#comboFill,#xpFill{height:100%;width:0%;background:linear-gradient(90deg,#00ffff,#ff00ff,#ffff00);transition:width .25s}
+#boardWrap{position:relative}
+#board{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;background:#050505;padding:8px;border-radius:18px;box-shadow:0 0 25px var(--themeGlow,#00ffff),0 0 45px #ff00ff77;touch-action:none}
+.cell{aspect-ratio:1/1;background:#171717;border-radius:8px;box-shadow:inset 0 0 0 2px #ffffff10;position:relative;overflow:hidden}
+.filled{box-shadow:inset 0 -5px 0 #00000055,inset 0 3px 0 #ffffff55,0 0 10px var(--glow),0 0 22px var(--glow)}
+.powerText{position:absolute;inset:0;display:grid;place-items:center;font-size:22px;font-weight:bold;text-shadow:0 0 8px white}
+.preview{outline:3px solid white}.bad{outline:3px solid #ff4757}
+.sweep{animation:sweep .42s linear forwards;background:linear-gradient(90deg,red,orange,yellow,lime,cyan,blue,violet)!important}
+@keyframes sweep{50%{filter:brightness(2.8);transform:scale(1.08)}100%{opacity:0;transform:scale(.1)}}
+#effects{position:absolute;inset:0;pointer-events:none}
+.particle{position:absolute;width:9px;height:9px;border-radius:50%;box-shadow:0 0 10px currentColor;animation:burst .65s ease-out forwards}
+@keyframes burst{to{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+.popup{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);font-size:30px;font-weight:bold;text-shadow:0 0 15px white;animation:pop 1s ease-out forwards;pointer-events:none;z-index:5}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-70%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-120%) scale(.8)}}
+#pieces{display:flex;justify-content:space-between;align-items:end;gap:10px;margin-top:18px;height:135px}
+.piece{width:31%;height:125px;background:#ffffff18;border:1px solid #ffffff33;border-radius:16px;display:grid;place-items:center;cursor:pointer;touch-action:none}
+.piece.selected{outline:4px solid #fff;box-shadow:0 0 18px #fff,0 0 30px var(--themeGlow,#00ffff)}
+.piece.used{opacity:.25;cursor:default}.mini{display:grid;gap:4px}.miniCell{width:22px;height:22px;border-radius:6px;position:relative}
+.miniPower{position:absolute;inset:0;display:grid;place-items:center;font-size:15px;text-shadow:0 0 6px white}
+.buttons{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+#message{margin-top:8px;min-height:24px;font-weight:bold;text-shadow:0 0 12px #fff}
+.small{font-size:13px;opacity:.85}
+</style>
+</head>
+<body>
+
+<div id="home" class="screen">
+  <div class="card">
+    <h1>Neon Cubes</h1>
+    <p>Daily challenges, crates, random events, local leaderboard, and prestige.</p>
+    <p><b>🪙 Coins:</b> <span id="homeCoins">0</span> | <b>Level:</b> <span id="homeLevel">1</span> | <b>Prestige:</b> <span id="homePrestige">0</span></p>
+    <div class="setting"><label><input type="checkbox" id="hardMode"> Hard Mode</label></div>
+    <div class="setting"><label><input type="checkbox" id="dailyMode"> Daily Challenge</label><br><span class="small" id="dailyInfo">Today’s challenge gives bonus rewards.</span></div>
+    <div class="setting">Theme<select id="themeChoice"></select></div>
+    <div class="setting">Music<select id="musicChoice"></select></div>
+    <button class="big" id="startBtn">Start</button>
+    <button id="shopBtn">Shop</button>
+    <button id="leaderBtn">Leaderboard</button>
+    <button id="crateBtn">Open Crate</button>
+    <button id="prestigeBtn">Prestige</button>
+  </div>
+</div>
+
+<div id="shopScreen" class="screen hidden"><div class="card"><h1>Shop</h1><p>Coins: <b id="shopCoins">0</b></p><div id="shopList"></div><button class="big" id="backHomeBtn">Back</button></div></div>
+<div id="leaderScreen" class="screen hidden"><div class="card"><h1>Leaderboard</h1><div id="leaderList"></div><button class="big" id="backLeaderBtn">Back</button></div></div>
+<div id="pauseScreen" class="screen hidden"><div class="card"><h1>Paused</h1><button class="big" id="resumeBtn">Resume</button><button id="restartFromPause">Restart</button><button id="homeFromPause">Home</button></div></div>
+<div id="gameOverScreen" class="screen hidden"><div class="card"><h1>Game Over</h1><p>Final Score: <b id="finalScore">0</b></p><p>Coins Earned: <b id="coinsEarned">0</b></p><p>XP Earned: <b id="xpEarned">0</b></p><p>Best Score: <b id="finalBest">0</b></p><button class="big" id="playAgainBtn">Play Again</button><button id="homeFromGameOver">Home</button></div></div>
+
+<div id="game">
+  <h1>Neon Cubes</h1>
+  <div class="scorebar">
+    <div class="box">Score<br><b id="score">0</b></div><div class="box">Combo<br><b id="combo">x1</b></div><div class="box">Level<br><b id="levelBox">1</b></div><div class="box">Coins<br><b id="coinsBox">0</b></div><div class="box">Event<br><b id="eventBox">None</b></div><div class="box">Best<br><b id="best">0</b></div>
+  </div>
+  <div class="meter"><div id="comboFill"></div></div>
+  <div class="meter"><div id="xpFill"></div></div>
+  <div id="boardWrap"><div id="board"></div><div id="effects"></div></div>
+  <div id="pieces"></div>
+  <div id="message">Power-ups: 💣 bomb, ⚡ lightning, 🌈 rainbow.</div>
+  <div class="buttons"><button id="rotateBtn">↻ Rotate</button><button id="pauseBtn">Pause</button><button id="newBtn">New Game</button><button id="musicBtn">Music On/Off</button></div>
+</div>
+
+<script>
+const SIZE=8, board=document.getElementById("board"),piecesEl=document.getElementById("pieces"),effects=document.getElementById("effects");
+const scoreEl=document.getElementById("score"),comboEl=document.getElementById("combo"),bestEl=document.getElementById("best"),msg=document.getElementById("message"),comboFill=document.getElementById("comboFill"),xpFill=document.getElementById("xpFill");
+const colors=["#00ffff","#ff00ff","#39ff14","#ff3131","#fff01f","#ff7b00","#9d00ff","#00ff88","#00a2ff","#ff1493","#7fff00","#ff5f1f","#1f51ff","#bc13fe"];
+const rainbow=["#ff0000","#ff7f00","#ffff00","#00ff00","#00ffff","#0000ff","#9400d3"];
+const normalShapes=[[[1]],[[1,1]],[[1],[1]],[[1,1,1]],[[1],[1],[1]],[[1,1],[1,1]],[[1,1,1,1]],[[1],[1],[1],[1]],[[1,0],[1,0],[1,1]],[[0,1],[0,1],[1,1]],[[1,1,0],[0,1,1]],[[1,1,1],[0,1,0]],[[1,1,1],[1,1,1]],[[1,1,1],[1,1,1],[1,1,1]]];
+const hardShapes=[[[1,1,1,1]],[[1],[1],[1],[1]],[[1,1,1,1,1]],[[1],[1],[1],[1],[1]],[[1,1,1],[1,1,1]],[[1,1,1],[1,1,1],[1,1,1]],[[1,0,0],[1,0,0],[1,1,1]],[[0,0,1],[0,0,1],[1,1,1]],[[1,1,1],[0,1,0],[0,1,0]],[[1,1,0],[0,1,1],[0,0,1]]];
+
+const themes={neon:{name:"Neon",price:0,bg:"#000000",glow:"#00ffff",board:"#050505"},galaxy:{name:"Galaxy",price:150,bg:"#090021",glow:"#9d00ff",board:"#100030"},lava:{name:"Lava",price:200,bg:"#210000",glow:"#ff5f1f",board:"#1a0500"},ice:{name:"Ice",price:200,bg:"#001a2e",glow:"#00ccff",board:"#00111f"},matrix:{name:"Matrix",price:250,bg:"#001400",glow:"#39ff14",board:"#000b00"},retro:{name:"Retro",price:300,bg:"#241100",glow:"#ffcc00",board:"#140900"}};
+const musicPacks={chill:{name:"Chill Elevator",price:0,notes:[261.63,329.63,392,493.88,440,392,329.63,293.66],speed:330,type:"sine"},arcade:{name:"Arcade",price:120,notes:[392,523.25,659.25,523.25,440,587.33,783.99],speed:230,type:"square"},spooky:{name:"Spooky",price:180,notes:[220,207.65,196,174.61,164.81,174.61,196],speed:360,type:"triangle"},off:{name:"Off",price:0,notes:[],speed:0,type:"sine"}};
+
+let state=JSON.parse(localStorage.getItem("neonCubes5State")||'{"coins":0,"xp":0,"level":1,"prestige":0,"crates":1,"themes":["neon"],"music":["chill","off"],"leaders":[]}');
+let grid=[],pieces=[],score=0,shownScore=0,best=0,combo=1,streak=0,selected=0,drag=null,clearing=false,hard=false,themeKey="neon",musicKey="chill",paused=false,gameOver=false,earnedCoins=0,earnedXP=0,daily=false,eventName="None",moveCount=0;
+let audioCtx=null,musicTimer=null,music=false,note=0;
+
+function saveState(){localStorage.setItem("neonCubes5State",JSON.stringify(state))}
+function rand(a){return a[Math.floor(Math.random()*a.length)]} function copy(s){return s.map(r=>r.slice())}
+function dailySeed(){let d=new Date();return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()}
+function dailyChallengeName(){let names=["Tiny Pieces Bonus","Power-Up Party","Hardcore Glow","Coin Rush","Lightning Day"];return names[dailySeed()%names.length]}
+function populateMenus(){themeChoice.innerHTML="";Object.keys(themes).forEach(k=>{if(state.themes.includes(k)){let o=document.createElement("option");o.value=k;o.textContent=themes[k].name;themeChoice.appendChild(o)}});musicChoice.innerHTML="";Object.keys(musicPacks).forEach(k=>{if(k==="off"||state.music.includes(k)){let o=document.createElement("option");o.value=k;o.textContent=musicPacks[k].name;musicChoice.appendChild(o)}});homeCoins.textContent=state.coins;homeLevel.textContent=state.level;homePrestige.textContent=state.prestige;dailyInfo.textContent="Today: "+dailyChallengeName()+" | Crates: "+state.crates}
+function renderShop(){shopCoins.textContent=state.coins;shopList.innerHTML="";Object.entries(themes).forEach(([k,t])=>shopItem("🎨 "+t.name+" Theme",state.themes.includes(k),t.price,()=>buy("theme",k,t.price)));Object.entries(musicPacks).forEach(([k,m])=>{if(k!=="off")shopItem("🎵 "+m.name+" Music",state.music.includes(k),m.price,()=>buy("music",k,m.price))})}
+function shopItem(name,owned,price,fn){let d=document.createElement("div");d.className="shopItem";d.innerHTML=`<b>${name}</b><br><span class="small">${owned?"Owned":price+" coins"}</span>`;let b=document.createElement("button");b.textContent=owned?"Owned":"Buy";b.disabled=owned;b.onclick=fn;d.appendChild(b);shopList.appendChild(d)}
+function buy(type,key,price){if(state.coins<price){alert("Not enough coins!");return}state.coins-=price;if(type==="theme")state.themes.push(key);else state.music.push(key);saveState();populateMenus();renderShop()}
+function renderLeaders(){leaderList.innerHTML="";let list=state.leaders.slice().sort((a,b)=>b.score-a.score).slice(0,8);if(!list.length)leaderList.innerHTML="<p>No scores yet.</p>";list.forEach((l,i)=>{let d=document.createElement("div");d.className="leaderRow";d.innerHTML=`<b>#${i+1}: ${l.score}</b><br><span class="small">${l.mode} • ${l.date}</span>`;leaderList.appendChild(d)})}
+function openCrate(){if(state.crates<=0){alert("No crates! Earn one by playing.");return}state.crates--;let reward=rand(["coins","coins","xp","theme","music"]);let text="";if(reward==="coins"){let n=50+Math.floor(Math.random()*101);state.coins+=n;text="You got "+n+" coins!"}else if(reward==="xp"){let n=80+Math.floor(Math.random()*80);state.xp+=n;text="You got "+n+" XP!"}else if(reward==="theme"){let locked=Object.keys(themes).filter(k=>!state.themes.includes(k));if(locked.length){let k=rand(locked);state.themes.push(k);text="Unlocked "+themes[k].name+" theme!"}else{state.coins+=100;text="All themes owned. Got 100 coins!"}}else{let locked=Object.keys(musicPacks).filter(k=>k!=="off"&&!state.music.includes(k));if(locked.length){let k=rand(locked);state.music.push(k);text="Unlocked "+musicPacks[k].name+" music!"}else{state.coins+=80;text="All music owned. Got 80 coins!"}}saveState();populateMenus();alert("🎁 "+text)}
+function prestige(){if(state.level<10){alert("Reach level 10 first!");return}if(!confirm("Prestige resets level and XP, but gives +1 prestige and 500 coins."))return;state.level=1;state.xp=0;state.prestige++;state.coins+=500;saveState();populateMenus()}
+
+startBtn.onclick=()=>{hard=hardMode.checked;daily=dailyMode.checked;themeKey=themeChoice.value;musicKey=musicChoice.value;hideAllScreens();game.style.display="block";newGame();if(musicKey!=="off")startMusic()};
+shopBtn.onclick=()=>{home.classList.add("hidden");shopScreen.classList.remove("hidden");renderShop()};
+leaderBtn.onclick=()=>{home.classList.add("hidden");leaderScreen.classList.remove("hidden");renderLeaders()};
+crateBtn.onclick=openCrate;prestigeBtn.onclick=prestige;backHomeBtn.onclick=()=>{shopScreen.classList.add("hidden");home.classList.remove("hidden");populateMenus()};backLeaderBtn.onclick=()=>{leaderScreen.classList.add("hidden");home.classList.remove("hidden")};
+rotateBtn.onclick=rotateSelected;newBtn.onclick=newGame;pauseBtn.onclick=()=>{if(!gameOver){paused=true;pauseScreen.classList.remove("hidden")}};resumeBtn.onclick=()=>{paused=false;pauseScreen.classList.add("hidden")};
+restartFromPause.onclick=()=>{paused=false;pauseScreen.classList.add("hidden");newGame()};homeFromPause.onclick=goHome;homeFromGameOver.onclick=goHome;playAgainBtn.onclick=()=>{gameOverScreen.classList.add("hidden");newGame()};musicBtn.onclick=()=>music?stopMusic():startMusic();
+
+function hideAllScreens(){home.classList.add("hidden");shopScreen.classList.add("hidden");leaderScreen.classList.add("hidden");pauseScreen.classList.add("hidden");gameOverScreen.classList.add("hidden")}
+function goHome(){stopMusic();game.style.display="none";hideAllScreens();home.classList.remove("hidden");populateMenus();document.body.style.background="#000"}
+function audio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)}
+function tone(f=440,d=.08,t="sine",v=.07){try{audio();let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=f;o.type=t;g.gain.value=v;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d)}catch(e){}}
+function startMusic(){if(music||musicKey==="off")return;audio();music=true;let pack=musicPacks[musicKey];musicTimer=setInterval(()=>{let f=pack.notes[note++%pack.notes.length];tone(f,.25,pack.type,.02);tone(f/2,.25,"triangle",.01)},pack.speed)}
+function stopMusic(){music=false;if(musicTimer)clearInterval(musicTimer);musicTimer=null}
+function applyTheme(){let t=themes[themeKey];document.body.style.background=t.bg;document.documentElement.style.setProperty("--themeGlow",t.glow);board.style.background=t.board}
+function flashBg(){let old=themes[themeKey].bg;document.body.style.background=rand(["#120024","#001f3f","#003b24","#3d0000","#2d2400","#24003d"]);setTimeout(()=>document.body.style.background=old,700)}
+function randomEvent(){let events=["None","Coin Rain","Power Surge","Double XP","Chaos Cubes"];eventName=rand(events);eventBox.textContent=eventName;if(eventName!=="None")showPopup("Random Event: "+eventName)}
+function maybePower(){let rate=eventName==="Power Surge"?.45:.2;let roll=Math.random();if(daily&&dailySeed()%5===1)rate+=.1;if(roll<rate*.4)return"bomb";if(roll<rate*.75)return"lightning";if(roll<rate)return"rainbow";return null}
+function icon(p){return p==="bomb"?"💣":p==="lightning"?"⚡":p==="rainbow"?"🌈":""}
+function addCoins(n){if(eventName==="Coin Rain")n*=2;if(daily)n=Math.ceil(n*1.5);earnedCoins+=n;state.coins+=n;coinsBox.textContent=state.coins;saveState()}
+function addXP(n){if(eventName==="Double XP")n*=2;if(daily)n=Math.ceil(n*1.5);earnedXP+=n;state.xp+=n;while(state.xp>=xpNeeded()){state.xp-=xpNeeded();state.level++;state.crates++;showPopup("Level Up! +Crate");tone(1200,.18,"triangle",.08)}levelBox.textContent=state.level;xpFill.style.width=(state.xp/xpNeeded()*100)+"%";saveState()}
+function xpNeeded(){return 100+state.level*50}
+
+function newGame(){gameOver=false;paused=false;clearing=false;earnedCoins=0;earnedXP=0;moveCount=0;randomEvent();applyTheme();grid=Array.from({length:SIZE},()=>Array(SIZE).fill(null));score=0;shownScore=0;combo=1;streak=0;selected=0;if(hard)addHardBlocks();if(daily)addDailySetup();best=Number(localStorage.getItem(hard?"neonCubesHardBestV5":"neonCubesBestV5")||0);makePieces();render();msg.textContent=daily?"Daily Challenge: "+dailyChallengeName():"Random events are active!"}
+function addHardBlocks(){let n=8;while(n){let r=Math.floor(Math.random()*SIZE),c=Math.floor(Math.random()*SIZE);if(!grid[r][c]){grid[r][c]={color:rand(colors),power:null};n--}}}
+function addDailySetup(){let n=(dailySeed()%5)+3;while(n){let r=Math.floor(Math.random()*SIZE),c=Math.floor(Math.random()*SIZE);if(!grid[r][c]){grid[r][c]={color:rand(colors),power:dailySeed()%2?"bomb":null};n--}}}
+function makePieces(){let pool=(hard||eventName==="Chaos Cubes")?hardShapes:normalShapes;pieces=[0,1,2].map(()=>({shape:copy(rand(pool)),color:rand(colors),used:false,power:maybePower()}));selected=firstPiece()}
+function firstPiece(){for(let i=0;i<pieces.length;i++)if(!pieces[i].used)return i;return null}
+function addScore(amount){let start=shownScore;score+=amount;let end=score,steps=12,i=0;let timer=setInterval(()=>{i++;shownScore=Math.round(start+(end-start)*(i/steps));scoreEl.textContent=shownScore;if(i>=steps){clearInterval(timer);shownScore=end;scoreEl.textContent=end}},18)}
+function updateMeters(){comboFill.style.width=Math.min(100,streak*25)+"%";comboEl.textContent="x"+combo;xpFill.style.width=(state.xp/xpNeeded()*100)+"%";levelBox.textContent=state.level;coinsBox.textContent=state.coins}
+function rotateSelected(){if(paused||gameOver||clearing||selected===null)return;let p=pieces[selected];if(!p||p.used)return;let rows=p.shape.length,cols=p.shape[0].length,rot=[];for(let c=0;c<cols;c++){let row=[];for(let r=rows-1;r>=0;r--)row.push(p.shape[r][c]);rot.push(row)}p.shape=rot;tone(850,.06,"triangle");render();msg.textContent="Rotated!"}
+function render(){scoreEl.textContent=shownScore;bestEl.textContent=best;updateMeters();board.innerHTML="";for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){let cell=document.createElement("div");cell.className="cell";cell.dataset.r=r;cell.dataset.c=c;let b=grid[r][c];if(b){cell.classList.add("filled");cell.style.background=b.color;cell.style.setProperty("--glow",b.color);if(b.power){let t=document.createElement("div");t.className="powerText";t.textContent=icon(b.power);cell.appendChild(t)}}board.appendChild(cell)}renderPieces();checkGameOver()}
+function renderPieces(){piecesEl.innerHTML="";pieces.forEach((p,i)=>{let wrap=document.createElement("div");wrap.className="piece"+(p.used?" used":"")+(selected===i?" selected":"");wrap.dataset.i=i;let mini=document.createElement("div");mini.className="mini";mini.style.gridTemplateColumns=`repeat(${p.shape[0].length},22px)`;let powerPlaced=false;p.shape.forEach(row=>row.forEach(v=>{let m=document.createElement("div");m.className="miniCell";if(v){m.style.background=p.color;m.style.boxShadow=`0 0 9px ${p.color},0 0 18px ${p.color},inset 0 -4px 0 #0006,inset 0 2px 0 #fff5`;if(p.power&&!powerPlaced){let s=document.createElement("span");s.className="miniPower";s.textContent=icon(p.power);m.appendChild(s);powerPlaced=true}}mini.appendChild(m)}));wrap.appendChild(mini);if(!p.used){wrap.onclick=()=>{if(!drag){selected=i;render()}};wrap.ondblclick=()=>{selected=i;rotateSelected()};wrap.onpointerdown=startDrag}piecesEl.appendChild(wrap)})}
+function startDrag(e){if(paused||gameOver||clearing)return;let i=Number(e.currentTarget.dataset.i);if(pieces[i].used)return;selected=i;drag={i,piece:pieces[i]};e.currentTarget.setPointerCapture(e.pointerId);document.addEventListener("pointermove",moveDrag);document.addEventListener("pointerup",endDrag,{once:true})}
+function moveDrag(e){clearPreview();let pos=getCell(e.clientX,e.clientY);if(!pos||!drag)return;preview(drag.piece,pos.r,pos.c,canPlace(drag.piece.shape,pos.r,pos.c))}
+function endDrag(e){let pos=getCell(e.clientX,e.clientY);clearPreview();if(pos&&drag&&canPlace(drag.piece.shape,pos.r,pos.c)){moveCount++;place(drag.piece,pos.r,pos.c);pieces[drag.i].used=true;addScore(count(drag.piece.shape)*(hard?2:1));addXP(2);selected=firstPiece();tone(520,.06,"square");let powerCells=activatePower(pos.r,pos.c,drag.piece);let lines=findLines();if(lines.total||powerCells.size)animateClear(lines,powerCells);else{combo=1;streak=0;if(pieces.every(p=>p.used))makePieces();render()}}else{tone(160,.08,"sawtooth");render()}drag=null;document.removeEventListener("pointermove",moveDrag)}
+function getCell(x,y){let rect=board.getBoundingClientRect();if(x<rect.left||x>rect.right||y<rect.top||y>rect.bottom)return null;let s=rect.width/SIZE;return{c:Math.floor((x-rect.left)/s),r:Math.floor((y-rect.top)/s)}}
+function canPlace(shape,r,c){for(let y=0;y<shape.length;y++)for(let x=0;x<shape[y].length;x++)if(shape[y][x]){let rr=r+y,cc=c+x;if(rr<0||cc<0||rr>=SIZE||cc>=SIZE||grid[rr][cc])return false}return true}
+function place(p,r,c){let powerDone=false;p.shape.forEach((row,y)=>row.forEach((v,x)=>{if(v){grid[r+y][c+x]={color:p.power==="rainbow"?rand(rainbow):p.color,power:(!powerDone&&p.power)?p.power:null};if(p.power&&!powerDone)powerDone=true}}))}
+function activatePower(r,c,p){let set=new Set();if(!p.power)return set;let first=null;outer:for(let y=0;y<p.shape.length;y++)for(let x=0;x<p.shape[y].length;x++)if(p.shape[y][x]){first={r:r+y,c:c+x};break outer}if(!first)return set;if(p.power==="bomb"){for(let rr=first.r-1;rr<=first.r+1;rr++)for(let cc=first.c-1;cc<=first.c+1;cc++)if(inBoard(rr,cc)&&grid[rr][cc])set.add(rr+","+cc);showPopup("💣 Bomb Cube!");tone(90,.18,"sawtooth",.09)}if(p.power==="lightning"){for(let cc=0;cc<SIZE;cc++)if(grid[first.r][cc])set.add(first.r+","+cc);for(let rr=0;rr<SIZE;rr++)if(grid[rr][first.c])set.add(rr+","+first.c);showPopup("⚡ Lightning Cube!");tone(1100,.12,"square",.07)}if(p.power==="rainbow"){let target=grid[first.r][first.c]?.color;for(let rr=0;rr<SIZE;rr++)for(let cc=0;cc<SIZE;cc++)if(grid[rr][cc]&&grid[rr][cc].color===target)set.add(rr+","+cc);showPopup("🌈 Rainbow Cube!");tone(760,.1,"triangle",.08)}return set}
+function inBoard(r,c){return r>=0&&c>=0&&r<SIZE&&c<SIZE}
+function findLines(){let rows=[],cols=[];for(let r=0;r<SIZE;r++)if(grid[r].every(Boolean))rows.push(r);for(let c=0;c<SIZE;c++){let full=true;for(let r=0;r<SIZE;r++)if(!grid[r][c])full=false;if(full)cols.push(c)}return{rows,cols,total:rows.length+cols.length}}
+function animateClear(lines,extra=new Set()){clearing=true;flashBg();render();let set=new Set(extra);lines.rows.forEach(r=>{for(let c=0;c<SIZE;c++)set.add(r+","+c)});lines.cols.forEach(c=>{for(let r=0;r<SIZE;r++)set.add(r+","+c)});set.forEach(k=>{let [r,c]=k.split(",").map(Number),cell=document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);if(cell){cell.style.background=rand(rainbow);cell.classList.add("sweep");particles(cell)}});streak++;if(streak>=4){combo++;streak=0;showPopup("Multiplier Up!")}let bonus=(set.size*8+lines.total*120*combo+(lines.total>1?150*lines.total:0))*(hard?2:1);addScore(bonus);addCoins(Math.max(1,Math.floor(set.size/4))*combo);addXP(10+set.size);msg.textContent=`✨ Clear! +${bonus}`;tone(700,.08,"triangle");setTimeout(()=>tone(920,.1,"triangle"),90);setTimeout(()=>{set.forEach(k=>{let [r,c]=k.split(",").map(Number);grid[r][c]=null});let key=hard?"neonCubesHardBestV5":"neonCubesBestV5";if(score>best){best=score;localStorage.setItem(key,best)}if(pieces.every(p=>p.used))makePieces();clearing=false;render()},430)}
+function showPopup(text){let p=document.createElement("div");p.className="popup";p.textContent=text;boardWrap.appendChild(p);setTimeout(()=>p.remove(),1000)}
+function particles(cell){let br=board.getBoundingClientRect(),cr=cell.getBoundingClientRect(),x=cr.left-br.left+cr.width/2,y=cr.top-br.top+cr.height/2;for(let i=0;i<12;i++){let p=document.createElement("div"),col=rand(rainbow);p.className="particle";p.style.left=x+"px";p.style.top=y+"px";p.style.background=col;p.style.color=col;let a=Math.random()*Math.PI*2,d=30+Math.random()*60;p.style.setProperty("--dx",Math.cos(a)*d+"px");p.style.setProperty("--dy",Math.sin(a)*d+"px");effects.appendChild(p);setTimeout(()=>p.remove(),700)}}
+function count(shape){return shape.flat().filter(Boolean).length}
+function clearPreview(){document.querySelectorAll(".cell").forEach(c=>c.classList.remove("preview","bad"))}
+function preview(p,r,c,ok){p.shape.forEach((row,y)=>row.forEach((v,x)=>{if(v){let cell=document.querySelector(`.cell[data-r="${r+y}"][data-c="${c+x}"]`);if(cell)cell.classList.add(ok?"preview":"bad")}}))}
+function checkGameOver(){if(clearing||gameOver||paused||!pieces.length)return;let live=pieces.filter(p=>!p.used),any=live.some(p=>{for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)if(canPlace(p.shape,r,c))return true;return false});if(!any){gameOver=true;let key=hard?"neonCubesHardBestV5":"neonCubesBestV5";if(score>best){best=score;localStorage.setItem(key,best)}state.crates++;state.leaders.push({score,mode:(daily?"Daily ":"")+(hard?"Hard":"Normal"),date:new Date().toLocaleDateString()});state.leaders=state.leaders.sort((a,b)=>b.score-a.score).slice(0,10);saveState();finalScore.textContent=score;finalBest.textContent=best;coinsEarned.textContent=earnedCoins;xpEarned.textContent=earnedXP;gameOverScreen.classList.remove("hidden");tone(120,.25,"sawtooth")}}
+populateMenus();
+</script>
+</body>
+</html>
